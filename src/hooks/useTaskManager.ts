@@ -35,7 +35,7 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
   // Create workflow from prompt
   const createWorkflow = useCallback(async (prompt: string): Promise<Workflow> => {
     try {
-      const response = await fetch('/default_workflow.json');
+      const response = await fetch('default_workflow.json');
       if (!response.ok) {
         throw new Error(`Failed to load workflow: ${response.status}`);
       }
