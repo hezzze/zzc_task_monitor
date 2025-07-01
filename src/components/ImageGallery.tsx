@@ -1,12 +1,14 @@
 import React from 'react';
-import { TaskData } from '../types';
+import { TaskData, SortOptions } from '../types';
 
 interface ImageGalleryProps {
   tasks: Map<string, TaskData>;
   onTaskClick: (taskData: TaskData) => void;
+  sortOptions: SortOptions;
+  onSortChange: (sortOptions: SortOptions) => void;
 }
 
-const ImageGallery: React.FC<ImageGalleryProps> = ({ tasks, onTaskClick }) => {
+const ImageGallery: React.FC<ImageGalleryProps> = ({ tasks, onTaskClick, sortOptions, onSortChange }) => {
   // Convert tasks map to array for easier processing
   const taskArray = Array.from(tasks.values());
   
@@ -26,10 +28,32 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ tasks, onTaskClick }) => {
     <div className="main-content">
       <div className="header">
         <h1>Generated Images</h1>
-        <div className="stats">
-          <span>Total: <span>{stats.totalImages}</span></span>
-          <span>Completed: <span>{stats.completedImages}</span></span>
-          <span>Failed: <span>{stats.failedImages}</span></span>
+        <div className="header-controls">
+          <div className="stats">
+            <span>Total: <span>{stats.totalImages}</span></span>
+            <span>Completed: <span>{stats.completedImages}</span></span>
+            <span>Failed: <span>{stats.failedImages}</span></span>
+          </div>
+          <div className="sort-controls">
+            <label htmlFor="sort-by">Sort by:</label>
+            <select 
+              id="sort-by"
+              value={sortOptions.sortBy} 
+              onChange={(e) => onSortChange({ ...sortOptions, sortBy: e.target.value as SortOptions['sortBy'] })}
+            >
+              <option value="created_at">Created</option>
+              <option value="updated_at">Updated</option>
+              <option value="started_at">Started</option>
+              <option value="completed_at">Completed</option>
+            </select>
+            <button 
+              className={`sort-order-btn ${sortOptions.sortOrder}`}
+              onClick={() => onSortChange({ ...sortOptions, sortOrder: sortOptions.sortOrder === 'asc' ? 'desc' : 'asc' })}
+              title={`Sort ${sortOptions.sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
+            >
+              {sortOptions.sortOrder === 'asc' ? '↑' : '↓'}
+            </button>
+          </div>
         </div>
       </div>
 

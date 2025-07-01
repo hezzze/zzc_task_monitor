@@ -10,7 +10,7 @@ import ToastNotifications from './components/ToastNotifications';
 import { useToast } from './hooks/useToast';
 import { useTaskManager } from './hooks/useTaskManager';
 import { useConnection } from './hooks/useConnection';
-import { TaskData } from './types';
+import { TaskData, SortOptions } from './types';
 
 const App: React.FC = () => {
   const [schedulerUrl, setSchedulerUrl] = useState<string>('https://api.zzcreation.com/scheduler');
@@ -22,11 +22,15 @@ const App: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSingleTestRunning, setIsSingleTestRunning] = useState<boolean>(false);
   const [isBatchTestRunning, setIsBatchTestRunning] = useState<boolean>(false);
+  const [sortOptions, setSortOptions] = useState<SortOptions>({
+    sortBy: 'created_at',
+    sortOrder: 'desc'
+  });
 
   // Custom hooks
   const { toasts, showToast } = useToast();
   const { tasks, getRandomPrompt, createWorkflow, submitTask, monitorTask, loadExistingTasks, clearGallery } = useTaskManager(schedulerUrl, showToast);
-  const { isConnected, isConnecting, systemInfo, connect, refreshSystemInfo } = useConnection(schedulerUrl, showToast, loadExistingTasks);
+  const { isConnected, isConnecting, systemInfo, connect, refreshSystemInfo } = useConnection(schedulerUrl, showToast, () => loadExistingTasks(sortOptions));
 
   // Run single test
   const runSingleTest = useCallback(async () => {
@@ -44,12 +48,14 @@ const App: React.FC = () => {
       
       showToast(`Task submitted: ${task.id}`, 'success');
       monitorTask(task.id, prompt);
+      // Reload tasks to maintain sort order
+      await loadExistingTasks(sortOptions);
     } catch (error: any) {
       showToast(`Failed to submit task: ${error.message}`, 'error');
     } finally {
       setIsSingleTestRunning(false);
     }
-  }, [isConnected, customPrompt, getRandomPrompt, createWorkflow, submitTask, monitorTask, showToast]);
+  }, [isConnected, customPrompt, getRandomPrompt, createWorkflow, submitTask, monitorTask, showToast, loadExistingTasks, sortOptions]);
 
 
 
@@ -84,6 +90,9 @@ const App: React.FC = () => {
         monitorTask(id, prompt);
       });
       
+      // Reload tasks to maintain sort order
+      await loadExistingTasks(sortOptions);
+      
       setBatchProgress(`All ${batchSize} tasks submitted and monitoring started`);
       showToast(`Batch test completed: ${batchSize} tasks submitted`, 'success');
     } catch (error: any) {
@@ -91,7 +100,7 @@ const App: React.FC = () => {
     } finally {
       setIsBatchTestRunning(false);
     }
-  }, [isConnected, batchSize, useRandomPrompts, customPrompt, getRandomPrompt, createWorkflow, submitTask, monitorTask, showToast]);
+  }, [isConnected, batchSize, useRandomPrompts, customPrompt, getRandomPrompt, createWorkflow, submitTask, monitorTask, showToast, loadExistingTasks, sortOptions]);
 
   // Export results
   const exportResults = useCallback(() => {
@@ -185,6 +194,11 @@ const App: React.FC = () => {
         <ImageGallery
           tasks={tasks}
           onTaskClick={handleTaskClick}
+          sortOptions={sortOptions}
+          onSortChange={(newSortOptions) => {
+            setSortOptions(newSortOptions);
+            loadExistingTasks(newSortOptions);
+          }}
         />
       </div>
 

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { TaskData, ApiTaskResponse, Workflow, TaskSubmissionResponse, TasksResponse } from '../types';
+import { TaskData, ApiTaskResponse, Workflow, TaskSubmissionResponse, TasksResponse, SortOptions } from '../types';
 
 const RANDOM_PROMPTS = [
   "a majestic dragon soaring through stormy clouds",
@@ -35,7 +35,8 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
   // Create workflow from prompt
   const createWorkflow = useCallback(async (prompt: string): Promise<Workflow> => {
     try {
-      const response = await fetch('default_workflow.json');
+      // Use process.env.PUBLIC_URL to handle both local dev and production
+      const response = await fetch(`${process.env.PUBLIC_URL}/default_workflow.json`);
       if (!response.ok) {
         throw new Error(`Failed to load workflow: ${response.status}`);
       }
@@ -252,9 +253,19 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
   }, [schedulerUrl, handleTaskCompleted, handleTaskFailed, addPendingTask, updateTaskStatus, mapApiTaskToTaskData]);
 
   // Load existing tasks
-  const loadExistingTasks = useCallback(async () => {
+  const loadExistingTasks = useCallback(async (sortOptions?: SortOptions) => {
     try {
-      const response = await fetch(`${schedulerUrl}/api/v1/tasks`);
+      // Build URL with sorting parameters
+      const url = new URL(`${schedulerUrl}/api/v1/tasks`);
+      
+      // Use provided sortOptions or default values
+      const sortBy = sortOptions?.sortBy || 'created_at';
+      const sortOrder = sortOptions?.sortOrder || 'desc';
+      
+      url.searchParams.append('sort_by', sortBy);
+      url.searchParams.append('sort_order', sortOrder);
+      
+      const response = await fetch(url.toString());
       if (response.ok) {
         const resp: TasksResponse = await response.json();
         

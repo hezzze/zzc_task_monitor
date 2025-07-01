@@ -72,6 +72,11 @@ export interface TasksResponse {
   tasks: ApiTaskResponse[];
 }
 
+export interface SortOptions {
+  sortBy: 'created_at' | 'updated_at' | 'started_at' | 'completed_at';
+  sortOrder: 'asc' | 'desc';
+}
+
 export interface StatsResponse {
   queue_length: number;
   total_tasks: number;
