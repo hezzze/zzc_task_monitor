@@ -91,12 +91,30 @@ A React-based web application for testing and monitoring the ZZC Scheduler servi
    docker run -p 3000:80 react-web-tester
    ```
 
-### Option 3: Cloud Deployment
+### Option 3: GitHub Pages Deployment
+
+The project is configured for GitHub Pages deployment:
+
+1. **Manual Deployment**:
+   ```bash
+   npm run deploy
+   ```
+
+2. **Automatic Deployment**: 
+   - Push changes to the main/master branch
+   - GitHub Actions will automatically build and deploy
+   - Live site: https://hezzze.github.io/zzc_task_monitor
+
+3. **Configuration**:
+   - Homepage URL is set in `package.json`
+   - GitHub Actions workflow in `.github/workflows/deploy.yml`
+   - Deploys to `gh-pages` branch automatically
+
+### Option 4: Other Cloud Deployment
 
 - **Netlify**: Connect your Git repository and deploy automatically
 - **Vercel**: Deploy with zero configuration
 - **AWS S3 + CloudFront**: Host static files with CDN
-- **GitHub Pages**: Deploy directly from your repository
 
 ## Configuration
 

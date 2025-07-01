@@ -2,6 +2,7 @@
   "name": "scheduler-web-tester-react",
   "version": "1.0.0",
   "private": true,
+  "homepage": "https://hezzze.github.io/zzc_task_monitor",
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
@@ -15,6 +16,9 @@
     "react-scripts": "5.0.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.1.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -42,9 +46,5 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:8080",
-  "homepage": "/zzc_task_monitor",
-  "devDependencies": {
-    "gh-pages": "^6.3.0"
-  }
+  "proxy": "http://localhost:8080"
 }
