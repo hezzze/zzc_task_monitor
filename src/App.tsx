@@ -13,7 +13,7 @@ import { useConnection } from './hooks/useConnection';
 import { TaskData } from './types';
 
 const App: React.FC = () => {
-  const [schedulerUrl, setSchedulerUrl] = useState<string>('http://39.106.154.140:3102');
+  const [schedulerUrl, setSchedulerUrl] = useState<string>('https://api.zzcreation.com/scheduler');
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [batchSize, setBatchSize] = useState<number>(5);
   const [useRandomPrompts, setUseRandomPrompts] = useState<boolean>(true);
