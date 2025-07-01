@@ -41,13 +41,6 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ tasks, onTaskClick }) => {
           </div>
         ) : (
           taskArray.map((task, index) => {
-            const isCompleted = task.status === 'completed';
-            const isFailed = task.status === 'failed';
-            const isTimeout = task.status === 'timeout';
-            const isProcessing = task.status === 'processing';
-            const isRunning = task.status === 'running';
-            const isPending = task.status === 'pending';
-            
             // Get the first image URL if available
             const imageUrl = task.result?.images?.[0];
 
