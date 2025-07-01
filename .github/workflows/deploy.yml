@@ -19,16 +19,14 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: examples/react-web-tester/package-lock.json
+        cache-dependency-path: package-lock.json
         
     - name: Install dependencies
       run: |
-        cd examples/react-web-tester
         npm ci
         
     - name: Build
       run: |
-        cd examples/react-web-tester
         npm run build
         
     - name: Deploy to GitHub Pages
