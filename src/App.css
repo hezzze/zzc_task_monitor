@@ -20,6 +20,12 @@ body {
   overflow: hidden;
 }
 
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Main container */
 .container {
   display: flex;
