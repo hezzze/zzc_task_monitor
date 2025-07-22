@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/zzc_task_monitor/static/css/main.addc68c4.css",
-    "main.js": "/zzc_task_monitor/static/js/main.d6495948.js",
+    "main.js": "/zzc_task_monitor/static/js/main.7561162e.js",
     "index.html": "/zzc_task_monitor/index.html",
     "main.addc68c4.css.map": "/zzc_task_monitor/static/css/main.addc68c4.css.map",
-    "main.d6495948.js.map": "/zzc_task_monitor/static/js/main.d6495948.js.map"
+    "main.7561162e.js.map": "/zzc_task_monitor/static/js/main.7561162e.js.map"
   },
   "entrypoints": [
     "static/css/main.addc68c4.css",
-    "static/js/main.d6495948.js"
+    "static/js/main.7561162e.js"
   ]
 }
