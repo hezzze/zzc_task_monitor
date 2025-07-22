@@ -1,6 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useToast } from '../hooks/useToast';
 import ToastNotifications from '../components/ToastNotifications';
+import { ApiType } from '../types/tts';
+import { VOICE_TYPES_DATA } from '../constants/voiceTypes';
 
 const Playground: React.FC = () => {
   const [text, setText] = useState<string>('救命啊救命啊');
@@ -8,8 +10,13 @@ const Playground: React.FC = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [emotion, setEmotion] = useState<string>('happy');
   const [enableEmotion, setEnableEmotion] = useState<boolean>(true);
+  const [apiType, setApiType] = useState<ApiType>('doubao');
+  const [voiceType, setVoiceType] = useState<string>('zh_female_gaolengyujie_emo_v2_mars_bigtts');
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toasts, showToast } = useToast();
+
+  // Memoize voice types for performance
+  const voiceTypes = useMemo(() => VOICE_TYPES_DATA, []);
 
   // Cleanup blob URL on component unmount
   useEffect(() => {
@@ -20,6 +27,14 @@ const Playground: React.FC = () => {
     };
   }, [audioUrl]);
 
+  // Update voice type when API type changes
+  useEffect(() => {
+    const currentVoiceTypes = voiceTypes[apiType];
+    const firstCategory = Object.keys(currentVoiceTypes)[0];
+    const firstVoice = currentVoiceTypes[firstCategory][0];
+    setVoiceType(firstVoice.value);
+  }, [apiType, voiceTypes]);
+
   const testTTSAPI = async () => {
     if (!text.trim()) {
       showToast('请输入要转换的文本', 'warning');
@@ -29,21 +44,28 @@ const Playground: React.FC = () => {
     setIsLoading(true);
     
     try {
+      // Prepare request body based on API type
+      const requestBody: any = {
+        text: text,
+        api_type: apiType,
+        voice_type: voiceType
+      };
+
+      // Only add doubao_audio_extra_config for doubao API
+      if (apiType === 'doubao') {
+        requestBody.doubao_audio_extra_config = {
+          emotion: emotion,
+          enable_emotion: enableEmotion
+        };
+      }
+
       const response = await fetch('https://api.zzcreation.com/web/custom_tts', {
         method: 'POST',
         headers: {
-          'x-api-key': 'zzc-test',
-          'referer': 'http://localhost:8000/',
+          'x-api-key': process.env.REACT_APP_API_KEY || '',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          text: text,
-          api_type: 'doubao',
-          double_audio_extra_config: {
-            emotion: emotion,
-            enable_emotion: enableEmotion
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -51,7 +73,7 @@ const Playground: React.FC = () => {
       }
 
       const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('audio/mpeg')) {
+      if (!contentType || !(contentType.includes('audio/mpeg') || contentType.includes('audio/wav'))) {
         throw new Error('响应不是音频格式');
       }
 
@@ -97,12 +119,32 @@ const Playground: React.FC = () => {
   };
 
   return (
-    <div className="container">
+    <div className="playground-container">
       <div className="playground-content">
         <h1>API Playground</h1>
         
         <div className="tts-tester">
           <h2>TTS API 测试器</h2>
+          
+          <div className="form-group">
+            <label htmlFor="api-type-select">API 类型:</label>
+            <div className="api-type-selector">
+              <button
+                type="button"
+                className={`api-type-button ${apiType === 'doubao' ? 'active' : ''}`}
+                onClick={() => setApiType('doubao')}
+              >
+                豆包 API
+              </button>
+              <button
+                type="button"
+                className={`api-type-button ${apiType === 'azure' ? 'active' : ''}`}
+                onClick={() => setApiType('azure')}
+              >
+                Azure API
+              </button>
+            </div>
+          </div>
           
           <div className="form-group">
             <label htmlFor="text-input">输入文本:</label>
@@ -117,35 +159,59 @@ const Playground: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="emotion-select">情感类型:</label>
+            <label htmlFor="voice-type-select">音色类型:</label>
             <select
-              id="emotion-select"
-              value={emotion}
-              onChange={(e) => setEmotion(e.target.value)}
-              className="emotion-select"
+              id="voice-type-select"
+              value={voiceType}
+              onChange={(e) => setVoiceType(e.target.value)}
+              className="voice-type-select"
             >
-              <option value="happy">开心</option>
-              <option value="sad">悲伤</option>
-              <option value="angry">愤怒</option>
-              <option value="surprised">惊讶</option>
-              <option value="fear">恐惧</option>
-              <option value="hate">憎恶</option>
-              <option value="excited">兴奋</option>
-              <option value="coldness">冷漠</option>
-              <option value="neutral">中立</option>
+              {Object.entries(voiceTypes[apiType]).map(([category, voices]) => (
+                <optgroup key={category} label={category}>
+                  {voices.map((voice) => (
+                    <option key={voice.value} value={voice.value}>
+                      {voice.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </div>
 
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={enableEmotion}
-                onChange={(e) => setEnableEmotion(e.target.checked)}
-              />
-              启用情感
-            </label>
-          </div>
+          {apiType === 'doubao' && (
+            <>
+              <div className="form-group">
+                <label htmlFor="emotion-select">情感类型:</label>
+                <select
+                  id="emotion-select"
+                  value={emotion}
+                  onChange={(e) => setEmotion(e.target.value)}
+                  className="emotion-select"
+                >
+                  <option value="happy">开心</option>
+                  <option value="sad">悲伤</option>
+                  <option value="angry">愤怒</option>
+                  <option value="surprised">惊讶</option>
+                  <option value="fear">恐惧</option>
+                  <option value="hate">憎恶</option>
+                  <option value="excited">兴奋</option>
+                  <option value="coldness">冷漠</option>
+                  <option value="neutral">中立</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={enableEmotion}
+                    onChange={(e) => setEnableEmotion(e.target.checked)}
+                  />
+                  启用情感
+                </label>
+              </div>
+            </>
+          )}
 
           <button
             onClick={testTTSAPI}
@@ -181,8 +247,9 @@ const Playground: React.FC = () => {
           <div className="api-details">
             <p><strong>端点:</strong> https://api.zzcreation.com/web/custom_tts</p>
             <p><strong>方法:</strong> POST</p>
-            <p><strong>API Key:</strong> zzc-test</p>
+            <p><strong>支持的 API 类型:</strong> 豆包 (doubao) / Azure</p>
             <p><strong>响应类型:</strong> audio/mpeg</p>
+            <p><strong>特殊功能:</strong> 豆包 API 支持情感控制，Azure API 提供多种方言版本</p>
           </div>
         </div>
       </div>
@@ -190,10 +257,15 @@ const Playground: React.FC = () => {
       <ToastNotifications toasts={toasts} />
       
       <style>{`
+        .playground-container {
+          height: 100vh;
+          overflow-y: auto;
+          padding: 20px;
+        }
+        
         .playground-content {
           max-width: 800px;
           margin: 0 auto;
-          padding: 20px;
         }
         
         .tts-tester {
@@ -213,6 +285,36 @@ const Playground: React.FC = () => {
           font-weight: bold;
         }
         
+        .api-type-selector {
+          display: flex;
+          gap: 10px;
+          margin-top: 5px;
+        }
+        
+        .api-type-button {
+          flex: 1;
+          padding: 10px 20px;
+          border: 2px solid #007bff;
+          background: white;
+          color: #007bff;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .api-type-button:hover {
+          background: #f8f9fa;
+          transform: translateY(-1px);
+        }
+        
+        .api-type-button.active {
+          background: #007bff;
+          color: white;
+          box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+        }
+        
         .text-input {
           width: 100%;
           padding: 10px;
@@ -222,7 +324,8 @@ const Playground: React.FC = () => {
           resize: vertical;
         }
         
-        .emotion-select {
+        .emotion-select,
+        .voice-type-select {
           width: 100%;
           padding: 8px;
           border: 1px solid #ddd;
