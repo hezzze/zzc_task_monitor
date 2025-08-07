@@ -193,5 +193,69 @@ export const VOICE_TYPES_DATA: Record<ApiType, VoiceTypes> = {
       { value: 'zh-CN-shaanxi-XiaoniNeural', label: '陕西晓妮 (女)' },
       { value: 'zh-CN-sichuan-YunxiNeural', label: '四川云希 (男)' }
     ]
+  },
+  minimax: {
+    '青年音色': [
+      { value: 'male-qn-qingse', label: '青涩青年音色' },
+      { value: 'male-qn-jingying', label: '精英青年音色' },
+      { value: 'male-qn-badao', label: '霸道青年音色' },
+      { value: 'male-qn-daxuesheng', label: '青年大学生音色' }
+    ],
+    '女性音色': [
+      { value: 'female-shaonv', label: '少女音色' },
+      { value: 'female-yujie', label: '御姐音色' },
+      { value: 'female-chengshu', label: '成熟女性音色' },
+      { value: 'female-tianmei', label: '甜美女性音色' }
+    ],
+    '主持人音色': [
+      { value: 'presenter_male', label: '男性主持人' },
+      { value: 'presenter_female', label: '女性主持人' }
+    ],
+    '有声书音色': [
+      { value: 'audiobook_male_1', label: '男性有声书1' },
+      { value: 'audiobook_male_2', label: '男性有声书2' },
+      { value: 'audiobook_female_1', label: '女性有声书1' },
+      { value: 'audiobook_female_2', label: '女性有声书2' }
+    ],
+    '精品音色': [
+      { value: 'male-qn-qingse-jingpin', label: '青涩青年音色-beta' },
+      { value: 'male-qn-jingying-jingpin', label: '精英青年音色-beta' },
+      { value: 'male-qn-badao-jingpin', label: '霸道青年音色-beta' },
+      { value: 'male-qn-daxuesheng-jingpin', label: '青年大学生音色-beta' },
+      { value: 'female-shaonv-jingpin', label: '少女音色-beta' },
+      { value: 'female-yujie-jingpin', label: '御姐音色-beta' },
+      { value: 'female-chengshu-jingpin', label: '成熟女性音色-beta' },
+      { value: 'female-tianmei-jingpin', label: '甜美女性音色-beta' }
+    ],
+    '儿童音色': [
+      { value: 'clever_boy', label: '聪明男童' },
+      { value: 'cute_boy', label: '可爱男童' },
+      { value: 'lovely_girl', label: '萌萌女童' },
+      { value: 'cartoon_pig', label: '卡通猪小琪' }
+    ],
+    '角色扮演': [
+      { value: 'bingjiao_didi', label: '病娇弟弟' },
+      { value: 'junlang_nanyou', label: '俊朗男友' },
+      { value: 'chunzhen_xuedi', label: '纯真学弟' },
+      { value: 'lengdan_xiongzhang', label: '冷淡学长' },
+      { value: 'badao_shaoye', label: '霸道少爷' },
+      { value: 'tianxin_xiaoling', label: '甜心小玲' },
+      { value: 'qiaopi_mengmei', label: '俏皮萌妹' },
+      { value: 'wumei_yujie', label: '妩媚御姐' },
+      { value: 'diadia_xuemei', label: '嗲嗲学妹' },
+      { value: 'danya_xuejie', label: '淡雅学姐' }
+    ],
+    '节日音色': [
+      { value: 'Santa_Claus', label: 'Santa Claus' },
+      { value: 'Grinch', label: 'Grinch' },
+      { value: 'Rudolph', label: 'Rudolph' },
+      { value: 'Arnold', label: 'Arnold' },
+      { value: 'Charming_Santa', label: 'Charming Santa' },
+      { value: 'Charming_Lady', label: 'Charming Lady' },
+      { value: 'Sweet_Girl', label: 'Sweet Girl' },
+      { value: 'Cute_Elf', label: 'Cute Elf' },
+      { value: 'Attractive_Girl', label: 'Attractive Girl' },
+      { value: 'Serene_Woman', label: 'Serene Woman' }
+    ]
   }
 };

@@ -3,6 +3,7 @@ import { useToast } from '../hooks/useToast';
 import ToastNotifications from '../components/ToastNotifications';
 import { ApiType } from '../types/tts';
 import { VOICE_TYPES_DATA } from '../constants/voiceTypes';
+import { EMOTION_OPTIONS, MINIMAX_EMOTION_OPTIONS } from '../types/tts';
 
 const Playground: React.FC = () => {
   const [text, setText] = useState<string>('救命啊救命啊');
@@ -10,8 +11,8 @@ const Playground: React.FC = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [emotion, setEmotion] = useState<string>('happy');
   const [enableEmotion, setEnableEmotion] = useState<boolean>(true);
-  const [apiType, setApiType] = useState<ApiType>('doubao');
-  const [voiceType, setVoiceType] = useState<string>('zh_female_gaolengyujie_emo_v2_mars_bigtts');
+  const [apiType, setApiType] = useState<ApiType>('minimax');
+  const [voiceType, setVoiceType] = useState<string>('male-qn-qingse');
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toasts, showToast } = useToast();
 
@@ -56,6 +57,15 @@ const Playground: React.FC = () => {
         requestBody.doubao_audio_extra_config = {
           emotion: emotion,
           enable_emotion: enableEmotion
+        };
+      }
+
+      // Only add minimax_extra_config for minimax API
+      if (apiType === 'minimax') {
+        requestBody.minimax_extra_config = {
+          voice_setting: {
+            emotion: emotion
+          }
         };
       }
 
@@ -143,6 +153,13 @@ const Playground: React.FC = () => {
               >
                 Azure API
               </button>
+              <button
+                type="button"
+                className={`api-type-button ${apiType === 'minimax' ? 'active' : ''}`}
+                onClick={() => setApiType('minimax')}
+              >
+                Minimax API
+              </button>
             </div>
           </div>
           
@@ -178,7 +195,7 @@ const Playground: React.FC = () => {
             </select>
           </div>
 
-          {apiType === 'doubao' && (
+          {(apiType === 'doubao' || apiType === 'minimax') && (
             <>
               <div className="form-group">
                 <label htmlFor="emotion-select">情感类型:</label>
@@ -188,28 +205,26 @@ const Playground: React.FC = () => {
                   onChange={(e) => setEmotion(e.target.value)}
                   className="emotion-select"
                 >
-                  <option value="happy">开心</option>
-                  <option value="sad">悲伤</option>
-                  <option value="angry">愤怒</option>
-                  <option value="surprised">惊讶</option>
-                  <option value="fear">恐惧</option>
-                  <option value="hate">憎恶</option>
-                  <option value="excited">兴奋</option>
-                  <option value="coldness">冷漠</option>
-                  <option value="neutral">中立</option>
+                  {(apiType === 'minimax' ? MINIMAX_EMOTION_OPTIONS : EMOTION_OPTIONS).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={enableEmotion}
-                    onChange={(e) => setEnableEmotion(e.target.checked)}
-                  />
-                  启用情感
-                </label>
-              </div>
+              {apiType === 'doubao' && (
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={enableEmotion}
+                      onChange={(e) => setEnableEmotion(e.target.checked)}
+                    />
+                    启用情感
+                  </label>
+                </div>
+              )}
             </>
           )}
 
@@ -247,9 +262,9 @@ const Playground: React.FC = () => {
           <div className="api-details">
             <p><strong>端点:</strong> https://api.zzcreation.com/web/custom_tts</p>
             <p><strong>方法:</strong> POST</p>
-            <p><strong>支持的 API 类型:</strong> 豆包 (doubao) / Azure</p>
+            <p><strong>支持的 API 类型:</strong> 豆包 (doubao) / Azure / Minimax</p>
             <p><strong>响应类型:</strong> audio/mpeg</p>
-            <p><strong>特殊功能:</strong> 豆包 API 支持情感控制，Azure API 提供多种方言版本</p>
+            <p><strong>特殊功能:</strong> 豆包 API 支持情感控制，Azure API 提供多种方言版本，Minimax API 支持丰富的音色和情感控制</p>
           </div>
         </div>
       </div>

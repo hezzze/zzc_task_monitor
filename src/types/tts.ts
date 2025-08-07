@@ -1,6 +1,6 @@
 // TTS API related types and interfaces
 
-export type ApiType = 'doubao' | 'azure';
+export type ApiType = 'doubao' | 'azure' | 'minimax';
 
 export interface VoiceOption {
   value: string;
@@ -19,6 +19,11 @@ export interface TTSRequestBody {
     emotion: string;
     enable_emotion: boolean;
   };
+  minimax_extra_config?: {
+    voice_setting: {
+      emotion: string;
+    };
+  };
 }
 
 export interface EmotionOption {
@@ -36,6 +41,17 @@ export const EMOTION_OPTIONS: EmotionOption[] = [
   { value: 'excited', label: '兴奋' },
   { value: 'coldness', label: '冷漠' },
   { value: 'neutral', label: '中立' },
+];
+
+// Minimax specific emotion options
+export const MINIMAX_EMOTION_OPTIONS: EmotionOption[] = [
+  { value: 'happy', label: '高兴' },
+  { value: 'sad', label: '悲伤' },
+  { value: 'angry', label: '愤怒' },
+  { value: 'fearful', label: '害怕' },
+  { value: 'disgusted', label: '厌恶' },
+  { value: 'surprised', label: '惊讶' },
+  { value: 'calm', label: '中性' },
 ];
 
 export const API_CONFIG = {
