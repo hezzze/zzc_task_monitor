@@ -87,18 +87,39 @@ const TaskModal: React.FC<TaskModalProps> = ({ isModalOpen, selectedTask, closeM
             </div>
           </div>
           
-          {selectedTask.result && selectedTask.result.images && selectedTask.result.images.length > 0 && (
+          {selectedTask.result && ((selectedTask.result.images?.length || 0) > 0 || (selectedTask.result.videos?.length || 0) > 0) && (
             <div className="detail-section">
-              <h4>Generated Images ({selectedTask.result.images.length})</h4>
-              <ul className="image-urls">
-                {selectedTask.result.images.map((url, index) => (
-                  <li key={index}>
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      {url}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <h4>Generated Media ({(selectedTask.result?.images?.length || 0) + (selectedTask.result?.videos?.length || 0)})</h4>
+              
+              {selectedTask.result.images && selectedTask.result.images.length > 0 && (
+                <div className="media-subsection">
+                  <h5>🖼️ Images ({selectedTask.result.images.length})</h5>
+                  <ul className="image-urls">
+                    {selectedTask.result.images.map((url, index) => (
+                      <li key={`image-${index}`}>
+                        <a href={url} target="_blank" rel="noopener noreferrer">
+                          {url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {selectedTask.result.videos && selectedTask.result.videos.length > 0 && (
+                <div className="media-subsection">
+                  <h5>📹 Videos ({selectedTask.result.videos.length})</h5>
+                  <ul className="image-urls">
+                    {selectedTask.result.videos.map((url, index) => (
+                      <li key={`video-${index}`}>
+                        <a href={url} target="_blank" rel="noopener noreferrer">
+                          {url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 

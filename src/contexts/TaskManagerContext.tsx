@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { TaskData, ApiTaskResponse, Workflow, TaskSubmissionResponse, TasksResponse, SortOptions } from '../types';
+import { useToastContext } from './ToastContext';
 
 const RANDOM_PROMPTS = [
   "a majestic dragon soaring through stormy clouds",
@@ -24,8 +25,34 @@ const RANDOM_PROMPTS = [
   "a crystal cave with rainbow reflections and gems"
 ];
 
-export const useTaskManager = (schedulerUrl: string, showToast: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void) => {
+interface TaskManagerContextType {
+  tasks: Map<string, TaskData>;
+  getRandomPrompt: () => string;
+  createWorkflow: (prompt: string) => Promise<Workflow>;
+  createVideoWorkflow: (imageName: string, videoName: string) => Promise<Workflow>;
+  submitTask: (workflow: Workflow, prompt: string, schedulerUrl: string) => Promise<TaskSubmissionResponse>;
+  monitorTask: (taskId: string, prompt: string, schedulerUrl: string) => Promise<void>;
+  loadExistingTasks: (schedulerUrl: string, sortOptions?: SortOptions) => Promise<void>;
+  clearGallery: () => void;
+}
+
+const TaskManagerContext = createContext<TaskManagerContextType | undefined>(undefined);
+
+export const useTaskManagerContext = (): TaskManagerContextType => {
+  const context = useContext(TaskManagerContext);
+  if (!context) {
+    throw new Error('useTaskManagerContext must be used within a TaskManagerProvider');
+  }
+  return context;
+};
+
+interface TaskManagerProviderProps {
+  children: ReactNode;
+}
+
+export const TaskManagerProvider: React.FC<TaskManagerProviderProps> = ({ children }) => {
   const [tasks, setTasks] = useState<Map<string, TaskData>>(new Map());
+  const { showToast } = useToastContext();
 
   // Get random prompt
   const getRandomPrompt = useCallback((): string => {
@@ -74,6 +101,39 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
     }
   }, []);
 
+  // Create video workflow from image and video filenames
+  const createVideoWorkflow = useCallback(async (imageName: string, videoName: string): Promise<Workflow> => {
+    try {
+      // Use process.env.PUBLIC_URL to handle both local dev and production
+      const response = await fetch(`${process.env.PUBLIC_URL}/video_workflow.json`);
+      if (!response.ok) {
+        throw new Error(`Failed to load video workflow: ${response.status}`);
+      }
+      
+      const workflowData = await response.json();
+      const workflow = JSON.parse(JSON.stringify(workflowData.workflow));
+      
+      // Update node 58 with image filename
+      if (workflow['58'] && workflow['58'].inputs) {
+        workflow['58'].inputs.image = imageName;
+      } else {
+        console.warn('Node 58 not found in video workflow');
+      }
+      
+      // Update node 119 with video filename
+      if (workflow['119'] && workflow['119'].inputs) {
+        workflow['119'].inputs.video = videoName;
+      } else {
+        console.warn('Node 119 not found in video workflow');
+      }
+      
+      return workflow;
+    } catch (error) {
+      console.error('Error loading video workflow:', error);
+      throw error;
+    }
+  }, []);
+
   // Extract prompt from workflow
   const extractPromptFromWorkflow = useCallback((workflow: Workflow): string => {
     if (workflow && workflow['28'] && workflow['28'].inputs && workflow['28'].inputs.string) {
@@ -95,7 +155,7 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
       }
     }
     
-    return 'Generated image';
+    return 'Generated Media';
   }, []);
 
   // Utility function to map API response to UI data
@@ -127,7 +187,7 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
   }, [extractPromptFromWorkflow]);
 
   // Submit task to scheduler
-  const submitTask = useCallback(async (workflow: Workflow, prompt: string): Promise<TaskSubmissionResponse> => {
+  const submitTask = useCallback(async (workflow: Workflow, prompt: string, schedulerUrl: string): Promise<TaskSubmissionResponse> => {
     const response = await fetch(`${schedulerUrl}/api/v1/tasks`, {
       method: 'POST',
       headers: {
@@ -145,17 +205,27 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
     }
     
     return await response.json();
-  }, [schedulerUrl]);
+  }, []);
 
   // Handle task completion
   const handleTaskCompleted = useCallback((taskData: TaskData) => {
-    setTasks(prev => new Map(prev.set(taskData.id, taskData)));
+    const completedTaskData = {
+      ...taskData,
+      status: 'completed' as const,
+      endTime: Date.now()
+    };
+    setTasks(prev => new Map(prev.set(taskData.id, completedTaskData)));
     showToast(`Task completed: ${taskData.id}`, 'success');
   }, [showToast]);
 
   // Handle task failure
   const handleTaskFailed = useCallback((taskData: TaskData) => {
-    setTasks(prev => new Map(prev.set(taskData.id, taskData)));
+    const failedTaskData = {
+      ...taskData,
+      status: taskData.status, // Keep the original status (failed/timeout)
+      endTime: taskData.endTime || Date.now()
+    };
+    setTasks(prev => new Map(prev.set(taskData.id, failedTaskData)));
     showToast(`Task failed: ${taskData.id}`, 'error');
   }, [showToast]);
 
@@ -170,13 +240,8 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
     setTasks(prev => new Map(prev.set(taskId, pendingTask)));
   }, []);
 
-  // Update task status
-  const updateTaskStatus = useCallback((taskData: TaskData) => {
-    setTasks(prev => new Map(prev.set(taskData.id, taskData)));
-  }, []);
-
   // Monitor task progress
-  const monitorTask = useCallback(async (taskId: string, prompt: string) => {
+  const monitorTask = useCallback(async (taskId: string, prompt: string, schedulerUrl: string) => {
     const taskData: TaskData = {
       id: taskId,
       prompt: prompt,
@@ -207,15 +272,13 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
             startTime: taskData.startTime
           };
           
-          setTasks(prev => new Map(prev.set(taskId, updatedTaskData)));
-          
           if (apiTask.status === 'completed') {
             handleTaskCompleted(updatedTaskData);
           } else if (apiTask.status === 'failed' || apiTask.status === 'timeout') {
             handleTaskFailed(updatedTaskData);
           } else {
             // Update status for intermediate states (processing, running, etc.)
-            updateTaskStatus(updatedTaskData);
+            setTasks(prev => new Map(prev.set(taskId, updatedTaskData)));
             setTimeout(pollTask, 2000);
           }
         } else {
@@ -250,10 +313,10 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
     };
     
     setTimeout(pollTask, 1000);
-  }, [schedulerUrl, handleTaskCompleted, handleTaskFailed, addPendingTask, updateTaskStatus, mapApiTaskToTaskData]);
+  }, [handleTaskCompleted, handleTaskFailed, addPendingTask, mapApiTaskToTaskData]);
 
   // Load existing tasks
-  const loadExistingTasks = useCallback(async (sortOptions?: SortOptions) => {
+  const loadExistingTasks = useCallback(async (schedulerUrl: string, sortOptions?: SortOptions) => {
     try {
       // Build URL with sorting parameters
       const url = new URL(`${schedulerUrl}/api/v1/tasks`);
@@ -285,7 +348,7 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
     } catch (error) {
       showToast(`Failed to load existing tasks: ${(error as Error).message}`, 'error');
     }
-  }, [schedulerUrl, mapApiTaskToTaskData, showToast]);
+  }, [mapApiTaskToTaskData, showToast]);
 
   // Clear gallery
   const clearGallery = useCallback(() => {
@@ -293,13 +356,20 @@ export const useTaskManager = (schedulerUrl: string, showToast: (message: string
     showToast('Gallery cleared', 'info');
   }, [showToast]);
 
-  return {
+  const value: TaskManagerContextType = {
     tasks,
     getRandomPrompt,
     createWorkflow,
+    createVideoWorkflow,
     submitTask,
     monitorTask,
     loadExistingTasks,
     clearGallery
   };
+
+  return (
+    <TaskManagerContext.Provider value={value}>
+      {children}
+    </TaskManagerContext.Provider>
+  );
 };

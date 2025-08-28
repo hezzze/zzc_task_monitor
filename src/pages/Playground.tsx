@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useToast } from '../hooks/useToast';
-import ToastNotifications from '../components/ToastNotifications';
+import { useToastContext } from '../contexts/ToastContext';
+
 import { ApiType } from '../types/tts';
 import { VOICE_TYPES_DATA } from '../constants/voiceTypes';
 import { EMOTION_OPTIONS, MINIMAX_EMOTION_OPTIONS } from '../types/tts';
@@ -14,7 +14,7 @@ const Playground: React.FC = () => {
   const [apiType, setApiType] = useState<ApiType>('minimax');
   const [voiceType, setVoiceType] = useState<string>('male-qn-qingse');
   const audioRef = useRef<HTMLAudioElement>(null);
-  const { toasts, showToast } = useToast();
+  const { showToast } = useToastContext();
 
   // Memoize voice types for performance
   const voiceTypes = useMemo(() => VOICE_TYPES_DATA, []);
@@ -269,7 +269,7 @@ const Playground: React.FC = () => {
         </div>
       </div>
 
-      <ToastNotifications toasts={toasts} />
+
       
       <style>{`
         .playground-container {

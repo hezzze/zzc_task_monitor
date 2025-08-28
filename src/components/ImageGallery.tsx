@@ -17,22 +17,40 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ tasks, onTaskClick, sortOpt
   const failedCount = taskArray.filter(task => task.status === 'failed').length;
   const totalCount = taskArray.length;
 
-  // Calculate stats from images
+  // Calculate media counts
+  const totalMediaCount = taskArray.reduce((count, task) => {
+    const imageCount = task.result?.images?.length || 0;
+    const videoCount = task.result?.videos?.length || 0;
+    return count + imageCount + videoCount;
+  }, 0);
+
+  const completedMediaCount = taskArray
+    .filter(task => task.status === 'completed')
+    .reduce((count, task) => {
+      const imageCount = task.result?.images?.length || 0;
+      const videoCount = task.result?.videos?.length || 0;
+      return count + imageCount + videoCount;
+    }, 0);
+
+  // Calculate stats from tasks and media
   const stats = {
-    totalImages: totalCount,
-    completedImages: completedCount,
-    failedImages: failedCount
+    totalTasks: totalCount,
+    completedTasks: completedCount,
+    failedTasks: failedCount,
+    totalMedia: totalMediaCount,
+    completedMedia: completedMediaCount
   };
 
   return (
     <div className="main-content">
       <div className="header">
-        <h1>Generated Images</h1>
+        <h1>Generated Media</h1>
         <div className="header-controls">
           <div className="stats">
-            <span>Total: <span>{stats.totalImages}</span></span>
-            <span>Completed: <span>{stats.completedImages}</span></span>
-            <span>Failed: <span>{stats.failedImages}</span></span>
+            <span>Tasks: <span>{stats.totalTasks}</span></span>
+            <span>Completed: <span>{stats.completedTasks}</span></span>
+            <span>Failed: <span>{stats.failedTasks}</span></span>
+            <span>Media: <span>{stats.totalMedia}</span></span>
           </div>
           <div className="sort-controls">
             <label htmlFor="sort-by">Sort by:</label>
@@ -61,12 +79,13 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ tasks, onTaskClick, sortOpt
       <div className="image-gallery">
         {taskArray.length === 0 ? (
           <div className="empty-state">
-            <p>No images generated yet. Run a test to see results here.</p>
+            <p>No media generated yet. Run a test to see results here.</p>
           </div>
         ) : (
           taskArray.map((task, index) => {
-            // Get the first image URL if available
+            // Get the first image or video URL if available
             const imageUrl = task.result?.images?.[0];
+            const videoUrl = task.result?.videos?.[0];
 
             return (
               <div 
@@ -77,21 +96,43 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ tasks, onTaskClick, sortOpt
               {(() => {
                 switch (task.status) {
                   case 'completed':
-                    return imageUrl ? (
-                      <img 
-                        src={imageUrl} 
-                        alt={`Generated: ${task.prompt}`}
-                        className="gallery-image"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+';
-                        }}
-                      />
-                    ) : (
-                      <div className="status-image completed">
-                        <div className="status-icon">✅</div>
-                        <div className="status-text">Completed</div>
-                      </div>
-                    );
+                    if (videoUrl) {
+                      return (
+                        <video 
+                          src={videoUrl} 
+                          className="gallery-image"
+                          controls
+                          muted
+                          preload="metadata"
+                          onError={(e) => {
+                            const videoElement = e.target as HTMLVideoElement;
+                            videoElement.style.display = 'none';
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'status-image failed';
+                            errorDiv.innerHTML = '<div class="status-icon">⚠️</div><div class="status-text">Video not available</div>';
+                            videoElement.parentNode?.appendChild(errorDiv);
+                          }}
+                        />
+                      );
+                    } else if (imageUrl) {
+                      return (
+                        <img 
+                          src={imageUrl} 
+                          alt={`Generated: ${task.prompt}`}
+                          className="gallery-image"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+';
+                          }}
+                        />
+                      );
+                    } else {
+                      return (
+                        <div className="status-image completed">
+                          <div className="status-icon">✅</div>
+                          <div className="status-text">Completed</div>
+                        </div>
+                      );
+                    }
                   case 'failed':
                   case 'timeout':
                     return (
@@ -124,6 +165,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ tasks, onTaskClick, sortOpt
                 <div className={`image-status ${task.status}`}>
                   {task.status.toUpperCase()}
                 </div>
+                {videoUrl && <div className="media-type">📹 VIDEO</div>}
+                {imageUrl && !videoUrl && <div className="media-type">🖼️ IMAGE</div>}
               </div>
             </div>
           );

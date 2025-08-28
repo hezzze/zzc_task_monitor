@@ -5,6 +5,7 @@ export interface ApiTaskResponse {
   status: 'pending' | 'processing' | 'running' | 'completed' | 'failed' | 'timeout';
   result?: {
     images?: string[];
+    videos?: string[];
     outputs?: Record<string, any>;
     logs?: any[];
   };
@@ -26,6 +27,7 @@ export interface TaskData {
   status: 'pending' | 'processing' | 'running' | 'completed' | 'failed' | 'timeout';
   result?: {
     images?: string[];
+    videos?: string[];
     outputs?: Record<string, any>;
     logs?: any[];
   };
