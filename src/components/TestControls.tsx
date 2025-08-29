@@ -24,13 +24,16 @@ const TestControls: React.FC<TestControlsProps> = ({
   const [batchProgress, setBatchProgress] = useState<string>('');
   const [isSingleTestRunning, setIsSingleTestRunning] = useState<boolean>(false);
   const [isBatchTestRunning, setIsBatchTestRunning] = useState<boolean>(false);
-  const [videoImageName, setVideoImageName] = useState<string>('');
-  const [videoFileName, setVideoFileName] = useState<string>('5af10b3f62e2df59aaeb47a04015a015a9ebfa8bbca6b5f8776a5a8db6d0d03d.mp4');
+
+  const [videoImageFile, setVideoImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [isSingleVideoTestRunning, setIsSingleVideoTestRunning] = useState<boolean>(false);
 
   // Custom hooks
   const { showToast } = useToastContext();
-  const { getRandomPrompt, createWorkflow, createVideoWorkflow, submitTask, monitorTask } = useTaskManagerContext();
+  const { getRandomPrompt, createWorkflow, submitTask, submitVideoTask, monitorTask } = useTaskManagerContext();
 
   // Run single test
   const runSingleTest = useCallback(async () => {
@@ -44,7 +47,7 @@ const TestControls: React.FC<TestControlsProps> = ({
     try {
       const prompt = customPrompt.trim() || getRandomPrompt();
       const workflow = await createWorkflow(prompt);
-      const task = await submitTask(workflow, prompt, schedulerUrl);
+      const task = await submitTask(workflow, schedulerUrl);
       
       showToast(`Task submitted: ${task.id}`, 'success');
       monitorTask(task.id, prompt, schedulerUrl);
@@ -73,7 +76,7 @@ const TestControls: React.FC<TestControlsProps> = ({
       for (let i = 0; i < batchSize; i++) {
         const prompt = useRandomPrompts ? getRandomPrompt() : (customPrompt.trim() || getRandomPrompt());
         const workflow = await createWorkflow(prompt);
-        const task = await submitTask(workflow, prompt, schedulerUrl);
+        const task = await submitTask(workflow, schedulerUrl);
         tasks.push({ id: task.id, prompt });
         
         setBatchProgress(`Submitted ${i + 1}/${batchSize} tasks`);
@@ -100,6 +103,42 @@ const TestControls: React.FC<TestControlsProps> = ({
     }
   }, [isConnected, batchSize, useRandomPrompts, customPrompt, getRandomPrompt, createWorkflow, submitTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
 
+  // Handle image file upload
+  const handleImageFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setVideoImageFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreviewUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setVideoImageFile(null);
+      setImagePreviewUrl(null);
+    }
+  }, []);
+
+  // Handle video file upload
+  const handleVideoFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setVideoFile(file);
+      
+      // Create preview URL for video
+      const url = URL.createObjectURL(file);
+      setVideoPreviewUrl(url);
+    } else {
+      setVideoFile(null);
+      if (videoPreviewUrl) {
+        URL.revokeObjectURL(videoPreviewUrl);
+      }
+      setVideoPreviewUrl(null);
+    }
+  }, [videoPreviewUrl]);
+
   // Run single video test
   const runSingleVideoTest = useCallback(async () => {
     if (!isConnected) {
@@ -107,19 +146,18 @@ const TestControls: React.FC<TestControlsProps> = ({
       return;
     }
     
-    if (!videoImageName || !videoFileName) {
-      showToast('Please provide both image and video filenames', 'warning');
+    if (!videoImageFile || !videoFile) {
+      showToast('Please provide both image and video files', 'warning');
       return;
     }
     
     setIsSingleVideoTestRunning(true);
     
     try {
-      const workflow = await createVideoWorkflow(videoImageName, videoFileName);
-      const task = await submitTask(workflow, `Video: ${videoImageName} + ${videoFileName}`, schedulerUrl);
+      const task = await submitVideoTask(videoImageFile, videoFile);
       
       showToast(`Video task submitted: ${task.id}`, 'success');
-      monitorTask(task.id, `Video: ${videoImageName} + ${videoFileName}`, schedulerUrl);
+      monitorTask(task.id, `Video: ${videoImageFile.name} + ${videoFile.name}`, schedulerUrl);
       // Reload tasks to maintain sort order
       await loadExistingTasks(sortOptions);
     } catch (error: any) {
@@ -127,7 +165,7 @@ const TestControls: React.FC<TestControlsProps> = ({
     } finally {
       setIsSingleVideoTestRunning(false);
     }
-  }, [isConnected, videoImageName, videoFileName, createVideoWorkflow, submitTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
+  }, [isConnected, videoImageFile, videoFile, submitVideoTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
   return (
     <>
       {/* Mode Tabs */}
@@ -200,21 +238,98 @@ const TestControls: React.FC<TestControlsProps> = ({
           {/* Video Single Test */}
           <div className="section">
             <h3>Single Video Test</h3>
-            <input 
-              type="text" 
-              placeholder="Input image filename (e.g., image.jpg)"
-              value={videoImageName}
-              onChange={(e) => setVideoImageName(e.target.value)}
-            />
-            <input 
-              type="text" 
-              placeholder="Input video filename (e.g., video.mp4)"
-              value={videoFileName}
-              onChange={(e) => setVideoFileName(e.target.value)}
-            />
+            <div className="file-upload-section">
+              <div className="upload-area">
+                <label htmlFor="image-upload" className="upload-label">
+                  <div className="upload-content">
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="upload-text">
+                      {videoImageFile ? 'Change Image' : 'Upload Image File'}
+                    </span>
+                    <span className="upload-hint">Click to browse or drag and drop</span>
+                  </div>
+                </label>
+                <input 
+                  id="image-upload"
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  className="upload-input"
+                />
+              </div>
+              
+              {videoImageFile && (
+                <div className="file-preview-section">
+                  <div className="file-info">
+                    <div className="file-details">
+                      <span className="file-name">{videoImageFile.name}</span>
+                      <span className="file-size">({(videoImageFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                  </div>
+                  
+                  {imagePreviewUrl && (
+                    <div className="image-preview">
+                      <img 
+                        src={imagePreviewUrl} 
+                        alt="Preview" 
+                        className="preview-image"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="file-upload-section">
+              <div className="upload-area">
+                <label htmlFor="video-upload" className="upload-label">
+                  <div className="upload-content">
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="upload-text">
+                      {videoFile ? 'Change Video' : 'Upload Video File'}
+                    </span>
+                    <span className="upload-hint">Click to browse or drag and drop</span>
+                  </div>
+                </label>
+                <input 
+                  id="video-upload"
+                  type="file" 
+                  accept="video/*"
+                  onChange={handleVideoFileChange}
+                  className="upload-input"
+                />
+              </div>
+              
+              {videoFile && (
+                <div className="file-preview-section">
+                  <div className="file-info">
+                    <div className="file-details">
+                      <span className="file-name">{videoFile.name}</span>
+                      <span className="file-size">({(videoFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                  </div>
+                  
+                  {videoPreviewUrl && (
+                    <div className="video-preview">
+                      <video 
+                        src={videoPreviewUrl} 
+                        controls
+                        className="preview-video"
+                        style={{ maxWidth: '300px', maxHeight: '200px' }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
             <button 
               onClick={runSingleVideoTest}
-              disabled={isSingleVideoTestRunning || !videoImageName || !videoFileName}
+              disabled={isSingleVideoTestRunning || !videoImageFile || !videoFile}
             >
               {isSingleVideoTestRunning ? 'Running...' : 'Run Single Video Test'}
             </button>

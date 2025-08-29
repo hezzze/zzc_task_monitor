@@ -30,7 +30,8 @@ interface TaskManagerContextType {
   getRandomPrompt: () => string;
   createWorkflow: (prompt: string) => Promise<Workflow>;
   createVideoWorkflow: (imageName: string, videoName: string) => Promise<Workflow>;
-  submitTask: (workflow: Workflow, prompt: string, schedulerUrl: string) => Promise<TaskSubmissionResponse>;
+  submitTask: (workflow: Workflow, schedulerUrl: string) => Promise<TaskSubmissionResponse>;
+  submitVideoTask: (imageFile: File, videoFile: File) => Promise<TaskSubmissionResponse>;
   monitorTask: (taskId: string, prompt: string, schedulerUrl: string) => Promise<void>;
   loadExistingTasks: (schedulerUrl: string, sortOptions?: SortOptions) => Promise<void>;
   clearGallery: () => void;
@@ -187,7 +188,7 @@ export const TaskManagerProvider: React.FC<TaskManagerProviderProps> = ({ childr
   }, [extractPromptFromWorkflow]);
 
   // Submit task to scheduler
-  const submitTask = useCallback(async (workflow: Workflow, prompt: string, schedulerUrl: string): Promise<TaskSubmissionResponse> => {
+  const submitTask = useCallback(async (workflow: Workflow, schedulerUrl: string): Promise<TaskSubmissionResponse> => {
     const response = await fetch(`${schedulerUrl}/api/v1/tasks`, {
       method: 'POST',
       headers: {
@@ -198,6 +199,27 @@ export const TaskManagerProvider: React.FC<TaskManagerProviderProps> = ({ childr
         priority: 1,
         timeout: 600
       })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+  }, []);
+
+  // Submit video task with file upload
+  const submitVideoTask = useCallback(async (imageFile: File, videoFile: File): Promise<TaskSubmissionResponse> => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('video', videoFile);
+
+    const response = await fetch("https://api.zzcreation.com/web/scheduler_i2v", {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'x-api-key': process.env.REACT_APP_API_KEY || ''
+      },
     });
     
     if (!response.ok) {
@@ -362,6 +384,7 @@ export const TaskManagerProvider: React.FC<TaskManagerProviderProps> = ({ childr
     createWorkflow,
     createVideoWorkflow,
     submitTask,
+    submitVideoTask,
     monitorTask,
     loadExistingTasks,
     clearGallery
