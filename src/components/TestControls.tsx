@@ -17,7 +17,7 @@ const TestControls: React.FC<TestControlsProps> = ({
   sortOptions
 }) => {
   // Internal state management
-  const [testMode, setTestMode] = useState<'image' | 'video'>('image');
+  const [testMode, setTestMode] = useState<'image' | 'video' | 'infinite_talk'>('image');
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [batchSize, setBatchSize] = useState<number>(5);
   const [useRandomPrompts, setUseRandomPrompts] = useState<boolean>(true);
@@ -29,11 +29,27 @@ const TestControls: React.FC<TestControlsProps> = ({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
-  const [isSingleVideoTestRunning, setIsSingleVideoTestRunning] = useState<boolean>(false);
+  const [isVaceControlVideoTestRunning, setIsVaceControlVideoTestRunning] = useState<boolean>(false);
+
+  // Text-to-video state
+  const [t2vPrompt, setT2vPrompt] = useState<string>('');
+  const [isT2VTestRunning, setIsT2VTestRunning] = useState<boolean>(false);
+
+  // Image-to-video state
+  const [i2vImageFile, setI2vImageFile] = useState<File | null>(null);
+  const [i2vImagePreviewUrl, setI2vImagePreviewUrl] = useState<string | null>(null);
+  const [isI2VTestRunning, setIsI2VTestRunning] = useState<boolean>(false);
+
+  // Infinite talk state
+  const [talkImageFile, setTalkImageFile] = useState<File | null>(null);
+  const [talkImagePreviewUrl, setTalkImagePreviewUrl] = useState<string | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+  const [isSingleTalkTestRunning, setIsSingleTalkTestRunning] = useState<boolean>(false);
 
   // Custom hooks
   const { showToast } = useToastContext();
-  const { getRandomPrompt, createWorkflow, submitTask, submitVideoTask, monitorTask } = useTaskManagerContext();
+  const { getRandomPrompt, createWorkflow, submitTask, submitVaceControlVideoTask, submitInfiniteTalkTask, submitT2VTask, submitI2VTask, monitorTask } = useTaskManagerContext();
 
   // Run single test
   const runSingleTest = useCallback(async () => {
@@ -140,7 +156,7 @@ const TestControls: React.FC<TestControlsProps> = ({
   }, [videoPreviewUrl]);
 
   // Run single video test
-  const runSingleVideoTest = useCallback(async () => {
+  const runVaceControlVideoTest = useCallback(async () => {
     if (!isConnected) {
       showToast('Please connect to scheduler first', 'warning');
       return;
@@ -151,10 +167,10 @@ const TestControls: React.FC<TestControlsProps> = ({
       return;
     }
     
-    setIsSingleVideoTestRunning(true);
+    setIsVaceControlVideoTestRunning(true);
     
     try {
-      const task = await submitVideoTask(videoImageFile, videoFile);
+      const task = await submitVaceControlVideoTask(videoImageFile, videoFile);
       
       showToast(`Video task submitted: ${task.id}`, 'success');
       monitorTask(task.id, `Video: ${videoImageFile.name} + ${videoFile.name}`, schedulerUrl);
@@ -163,9 +179,148 @@ const TestControls: React.FC<TestControlsProps> = ({
     } catch (error: any) {
       showToast(`Failed to submit video task: ${error.message}`, 'error');
     } finally {
-      setIsSingleVideoTestRunning(false);
+      setIsVaceControlVideoTestRunning(false);
     }
-  }, [isConnected, videoImageFile, videoFile, submitVideoTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
+  }, [isConnected, videoImageFile, videoFile, submitVaceControlVideoTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
+
+  // Handle talk image file upload
+  const handleTalkImageFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setTalkImageFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setTalkImagePreviewUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setTalkImageFile(null);
+      setTalkImagePreviewUrl(null);
+    }
+  }, []);
+
+  // Handle audio file upload
+  const handleAudioFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setAudioFile(file);
+      
+      // Create preview URL for audio
+      const url = URL.createObjectURL(file);
+      setAudioPreviewUrl(url);
+    } else {
+      setAudioFile(null);
+      if (audioPreviewUrl) {
+        URL.revokeObjectURL(audioPreviewUrl);
+      }
+      setAudioPreviewUrl(null);
+    }
+  }, [audioPreviewUrl]);
+
+  // Run single infinite talk test
+  const runSingleTalkTest = useCallback(async () => {
+    if (!isConnected) {
+      showToast('Please connect to scheduler first', 'warning');
+      return;
+    }
+    
+    if (!talkImageFile || !audioFile) {
+      showToast('Please provide both image and audio files', 'warning');
+      return;
+    }
+    
+    setIsSingleTalkTestRunning(true);
+    
+    try {
+      const task = await submitInfiniteTalkTask(talkImageFile, audioFile);
+      
+      showToast(`Infinite talk task submitted: ${task.id}`, 'success');
+      monitorTask(task.id, `Infinite Talk: ${talkImageFile.name} + ${audioFile.name}`, schedulerUrl);
+      // Reload tasks to maintain sort order
+      await loadExistingTasks(sortOptions);
+    } catch (error: any) {
+      showToast(`Failed to submit infinite talk task: ${error.message}`, 'error');
+    } finally {
+      setIsSingleTalkTestRunning(false);
+    }
+  }, [isConnected, talkImageFile, audioFile, submitInfiniteTalkTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
+
+  // Run single text-to-video test
+  const runSingleT2VTest = useCallback(async () => {
+    if (!isConnected) {
+      showToast('Please connect to scheduler first', 'warning');
+      return;
+    }
+    
+    const prompt = t2vPrompt.trim() || getRandomPrompt();
+    if (!prompt) {
+      showToast('Please provide a prompt for text-to-video generation', 'warning');
+      return;
+    }
+    
+    setIsT2VTestRunning(true);
+    
+    try {
+      const task = await submitT2VTask(prompt, schedulerUrl);
+      
+      showToast(`Text-to-video task submitted: ${task.id}`, 'success');
+      monitorTask(task.id, `T2V: ${prompt}`, schedulerUrl);
+      // Reload tasks to maintain sort order
+      await loadExistingTasks(sortOptions);
+    } catch (error: any) {
+      showToast(`Failed to submit text-to-video task: ${error.message}`, 'error');
+    } finally {
+      setIsT2VTestRunning(false);
+    }
+  }, [isConnected, t2vPrompt, getRandomPrompt, submitT2VTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
+
+  // Handle i2v image file upload
+  const handleI2vImageFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setI2vImageFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setI2vImagePreviewUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setI2vImageFile(null);
+      setI2vImagePreviewUrl(null);
+    }
+  }, []);
+
+  // Run single image-to-video test
+  const runSingleI2VTest = useCallback(async () => {
+    if (!isConnected) {
+      showToast('Please connect to scheduler first', 'warning');
+      return;
+    }
+    
+    if (!i2vImageFile) {
+      showToast('Please provide an image file', 'warning');
+      return;
+    }
+    
+    setIsI2VTestRunning(true);
+    
+    try {
+      const task = await submitI2VTask(i2vImageFile, schedulerUrl);
+      
+      showToast(`Image-to-video task submitted: ${task.id}`, 'success');
+      monitorTask(task.id, `I2V: ${i2vImageFile.name}`, schedulerUrl);
+      // Reload tasks to maintain sort order
+      await loadExistingTasks(sortOptions);
+    } catch (error: any) {
+      showToast(`Failed to submit image-to-video task: ${error.message}`, 'error');
+    } finally {
+      setIsI2VTestRunning(false);
+    }
+  }, [isConnected, i2vImageFile, submitI2VTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
   return (
     <>
       {/* Mode Tabs */}
@@ -183,6 +338,12 @@ const TestControls: React.FC<TestControlsProps> = ({
             onClick={() => setTestMode('video')}
           >
             Video Tests
+          </button>
+          <button 
+            className={testMode === 'infinite_talk' ? 'active' : ''}
+            onClick={() => setTestMode('infinite_talk')}
+          >
+            Infinite Talk
           </button>
         </div>
       </div>
@@ -233,11 +394,84 @@ const TestControls: React.FC<TestControlsProps> = ({
             {batchProgress && <div className="batch-progress">{batchProgress}</div>}
           </div>
         </>
-      ) : (
+      ) : testMode === 'video' ? (
         <>
-          {/* Video Single Test */}
+          
+          {/* Text-to-Video Test */}
           <div className="section">
-            <h3>Single Video Test</h3>
+            <h3>Text-to-Video Generation</h3>
+            <textarea 
+              placeholder="Enter prompt for video generation or leave empty for random"
+              value={t2vPrompt}
+              onChange={(e) => setT2vPrompt(e.target.value)}
+              rows={3}
+            />
+            <button 
+              onClick={runSingleT2VTest}
+              disabled={isT2VTestRunning}
+            >
+              {isT2VTestRunning ? 'Generating...' : 'Generate Video from Text'}
+            </button>
+          </div>
+
+          {/* Image-to-Video Test */}
+          <div className="section">
+            <h3>Image-to-Video Generation</h3>
+            <div className="file-upload-section">
+              <div className="upload-area">
+                <label htmlFor="i2v-image-upload" className="upload-label">
+                  <div className="upload-content">
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="upload-text">
+                      {i2vImageFile ? 'Change Image' : 'Upload Image File'}
+                    </span>
+                    <span className="upload-hint">Click to browse or drag and drop</span>
+                  </div>
+                </label>
+                <input 
+                  id="i2v-image-upload"
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleI2vImageFileChange}
+                  className="upload-input"
+                />
+              </div>
+              
+              {i2vImageFile && (
+                <div className="file-preview-section">
+                  <div className="file-info">
+                    <div className="file-details">
+                      <span className="file-name">{i2vImageFile.name}</span>
+                      <span className="file-size">({(i2vImageFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                  </div>
+                  
+                  {i2vImagePreviewUrl && (
+                    <div className="image-preview">
+                      <img 
+                        src={i2vImagePreviewUrl} 
+                        alt="Preview" 
+                        className="preview-image"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <button 
+              onClick={runSingleI2VTest}
+              disabled={isI2VTestRunning || !i2vImageFile}
+            >
+              {isI2VTestRunning ? 'Generating...' : 'Generate Video from Image'}
+            </button>
+          </div>
+
+          {/* wan 2.2 vace fun control test */}
+          <div className="section">
+            <h3>Wan 2.2 Vace Fun Control Test</h3>
             <div className="file-upload-section">
               <div className="upload-area">
                 <label htmlFor="image-upload" className="upload-label">
@@ -328,14 +562,115 @@ const TestControls: React.FC<TestControlsProps> = ({
             </div>
             
             <button 
-              onClick={runSingleVideoTest}
-              disabled={isSingleVideoTestRunning || !videoImageFile || !videoFile}
+              onClick={runVaceControlVideoTest}
+              disabled={isVaceControlVideoTestRunning || !videoImageFile || !videoFile}
             >
-              {isSingleVideoTestRunning ? 'Running...' : 'Run Single Video Test'}
+              {isVaceControlVideoTestRunning ? 'Running...' : 'Run Single Video Test'}
             </button>
           </div>
 
-
+        </>
+      ) : (
+        <>
+          {/* Infinite Talk Single Test */}
+          <div className="section">
+            <h3>Single Infinite Talk Test</h3>
+            <div className="file-upload-section">
+              <div className="upload-area">
+                <label htmlFor="talk-image-upload" className="upload-label">
+                  <div className="upload-content">
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="upload-text">
+                      {talkImageFile ? 'Change Image' : 'Upload Image File'}
+                    </span>
+                    <span className="upload-hint">Click to browse or drag and drop</span>
+                  </div>
+                </label>
+                <input 
+                  id="talk-image-upload"
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleTalkImageFileChange}
+                  className="upload-input"
+                />
+              </div>
+              
+              {talkImageFile && (
+                <div className="file-preview-section">
+                  <div className="file-info">
+                    <div className="file-details">
+                      <span className="file-name">{talkImageFile.name}</span>
+                      <span className="file-size">({(talkImageFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                  </div>
+                  
+                  {talkImagePreviewUrl && (
+                    <div className="image-preview">
+                      <img 
+                        src={talkImagePreviewUrl} 
+                        alt="Preview" 
+                        className="preview-image"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="file-upload-section">
+              <div className="upload-area">
+                <label htmlFor="audio-upload" className="upload-label">
+                  <div className="upload-content">
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="upload-text">
+                      {audioFile ? 'Change Audio' : 'Upload Audio File'}
+                    </span>
+                    <span className="upload-hint">Click to browse or drag and drop</span>
+                  </div>
+                </label>
+                <input 
+                  id="audio-upload"
+                  type="file" 
+                  accept="audio/*"
+                  onChange={handleAudioFileChange}
+                  className="upload-input"
+                />
+              </div>
+              
+              {audioFile && (
+                <div className="file-preview-section">
+                  <div className="file-info">
+                    <div className="file-details">
+                      <span className="file-name">{audioFile.name}</span>
+                      <span className="file-size">({(audioFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                  </div>
+                  
+                  {audioPreviewUrl && (
+                    <div className="audio-preview">
+                      <audio 
+                        src={audioPreviewUrl} 
+                        controls
+                        className="preview-audio"
+                        style={{ width: '100%', maxWidth: '300px' }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <button 
+              onClick={runSingleTalkTest}
+              disabled={isSingleTalkTestRunning || !talkImageFile || !audioFile}
+            >
+              {isSingleTalkTestRunning ? 'Running...' : 'Run Single Infinite Talk Test'}
+            </button>
+          </div>
         </>
       )}
     </>

@@ -31,7 +31,10 @@ interface TaskManagerContextType {
   createWorkflow: (prompt: string) => Promise<Workflow>;
   createVideoWorkflow: (imageName: string, videoName: string) => Promise<Workflow>;
   submitTask: (workflow: Workflow, schedulerUrl: string) => Promise<TaskSubmissionResponse>;
-  submitVideoTask: (imageFile: File, videoFile: File) => Promise<TaskSubmissionResponse>;
+  submitVaceControlVideoTask: (imageFile: File, videoFile: File) => Promise<TaskSubmissionResponse>;
+  submitInfiniteTalkTask: (imageFile: File, audioFile: File) => Promise<TaskSubmissionResponse>;
+  submitT2VTask: (prompt: string, schedulerUrl: string) => Promise<TaskSubmissionResponse>;
+  submitI2VTask: (imageFile: File, schedulerUrl: string) => Promise<TaskSubmissionResponse>;
   monitorTask: (taskId: string, prompt: string, schedulerUrl: string) => Promise<void>;
   loadExistingTasks: (schedulerUrl: string, sortOptions?: SortOptions) => Promise<void>;
   clearGallery: () => void;
@@ -153,6 +156,12 @@ export const TaskManagerProvider: React.FC<TaskManagerProviderProps> = ({ childr
         if (node.inputs.text && typeof node.inputs.text === 'string' && node.inputs.text.length > 10) {
           return node.inputs.text;
         }
+
+        // wan2.2 t2v
+        if (node.inputs.positive_prompt && typeof node.inputs.positive_prompt === 'string') {
+          return node.inputs.positive_prompt;
+        }
+        
       }
     }
     
@@ -209,12 +218,73 @@ export const TaskManagerProvider: React.FC<TaskManagerProviderProps> = ({ childr
   }, []);
 
   // Submit video task with file upload
-  const submitVideoTask = useCallback(async (imageFile: File, videoFile: File): Promise<TaskSubmissionResponse> => {
+  const submitVaceControlVideoTask = useCallback(async (imageFile: File, videoFile: File): Promise<TaskSubmissionResponse> => {
     const formData = new FormData();
     formData.append('image', imageFile);
     formData.append('video', videoFile);
 
-    const response = await fetch("https://api.zzcreation.com/web/scheduler_i2v", {
+    const response = await fetch("https://api.zzcreation.com/web/scheduler_i2v_vace_fun", {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'x-api-key': process.env.REACT_APP_API_KEY || ''
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+  }, []);
+
+  // Submit infinite talk task with image and audio files
+  const submitInfiniteTalkTask = useCallback(async (imageFile: File, audioFile: File): Promise<TaskSubmissionResponse> => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('audio', audioFile);
+
+    const response = await fetch("https://api.zzcreation.com/web/scheduler_infinite_talk", {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'x-api-key': process.env.REACT_APP_API_KEY || ''
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+  }, []);
+
+  // Submit text-to-video task
+  const submitT2VTask = useCallback(async (prompt: string): Promise<TaskSubmissionResponse> => {
+    const response = await fetch(`https://api.zzcreation.com/web/scheduler_t2v`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.REACT_APP_API_KEY || ''
+      },
+      body: JSON.stringify({
+        prompt: prompt
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+  }, []);
+
+  // Submit image-to-video task
+  const submitI2VTask = useCallback(async (imageFile: File, schedulerUrl: string): Promise<TaskSubmissionResponse> => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    const response = await fetch(`https://api.zzcreation.com/web/scheduler_i2v`, {
       method: 'POST',
       body: formData,
       headers: {
@@ -384,7 +454,10 @@ export const TaskManagerProvider: React.FC<TaskManagerProviderProps> = ({ childr
     createWorkflow,
     createVideoWorkflow,
     submitTask,
-    submitVideoTask,
+    submitVaceControlVideoTask,
+    submitInfiniteTalkTask,
+    submitT2VTask,
+    submitI2VTask,
     monitorTask,
     loadExistingTasks,
     clearGallery
