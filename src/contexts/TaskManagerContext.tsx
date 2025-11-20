@@ -34,7 +34,9 @@ interface TaskManagerContextType {
   submitVaceControlVideoTask: (imageFile: File, videoFile: File) => Promise<TaskSubmissionResponse>;
   submitInfiniteTalkTask: (imageFile: File, audioFile: File) => Promise<TaskSubmissionResponse>;
   submitT2VTask: (prompt: string, schedulerUrl: string) => Promise<TaskSubmissionResponse>;
+  submitT2ITask: (prompt: string) => Promise<TaskSubmissionResponse>;
   submitI2VTask: (imageFile: File, schedulerUrl: string) => Promise<TaskSubmissionResponse>;
+  submitFaceSwapTask: (imageFile: File, videoFileKey: string) => Promise<TaskSubmissionResponse>;
   monitorTask: (taskId: string, prompt: string, schedulerUrl: string) => Promise<void>;
   loadExistingTasks: (schedulerUrl: string, sortOptions?: SortOptions) => Promise<void>;
   clearGallery: () => void;
@@ -279,12 +281,53 @@ export const TaskManagerProvider: React.FC<TaskManagerProviderProps> = ({ childr
     return await response.json();
   }, []);
 
+  // Submit text-to-image task
+  const submitT2ITask = useCallback(async (prompt: string): Promise<TaskSubmissionResponse> => {
+    const response = await fetch(`https://api.zzcreation.com/web/scheduler_qwen_t2i`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.REACT_APP_API_KEY || ''
+      },
+      body: JSON.stringify({
+        prompt: prompt
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+  }, []);
+
   // Submit image-to-video task
   const submitI2VTask = useCallback(async (imageFile: File, schedulerUrl: string): Promise<TaskSubmissionResponse> => {
     const formData = new FormData();
     formData.append('image', imageFile);
 
     const response = await fetch(`https://api.zzcreation.com/web/scheduler_i2v`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'x-api-key': process.env.REACT_APP_API_KEY || ''
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+  }, []);
+
+  // Submit faceswap task
+  const submitFaceSwapTask = useCallback(async (imageFile: File, videoFileKey: string): Promise<TaskSubmissionResponse> => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('videoFile', videoFileKey);
+
+    const response = await fetch(`https://api.zzcreation.com/web/scheduler_faceswap`, {
       method: 'POST',
       body: formData,
       headers: {
@@ -457,7 +500,9 @@ export const TaskManagerProvider: React.FC<TaskManagerProviderProps> = ({ childr
     submitVaceControlVideoTask,
     submitInfiniteTalkTask,
     submitT2VTask,
+    submitT2ITask,
     submitI2VTask,
+    submitFaceSwapTask,
     monitorTask,
     loadExistingTasks,
     clearGallery

@@ -24,6 +24,7 @@ const TestControls: React.FC<TestControlsProps> = ({
   const [batchProgress, setBatchProgress] = useState<string>('');
   const [isSingleTestRunning, setIsSingleTestRunning] = useState<boolean>(false);
   const [isBatchTestRunning, setIsBatchTestRunning] = useState<boolean>(false);
+  const [isT2ITestRunning, setIsT2ITestRunning] = useState<boolean>(false);
 
   const [videoImageFile, setVideoImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -47,9 +48,15 @@ const TestControls: React.FC<TestControlsProps> = ({
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
   const [isSingleTalkTestRunning, setIsSingleTalkTestRunning] = useState<boolean>(false);
 
+  // Faceswap state
+  const [faceswapImageFile, setFaceswapImageFile] = useState<File | null>(null);
+  const [faceswapImagePreviewUrl, setFaceswapImagePreviewUrl] = useState<string | null>(null);
+  const [faceswapVideoFileKey, setFaceswapVideoFileKey] = useState<string>('peterparker.mp4');
+  const [isFaceSwapTestRunning, setIsFaceSwapTestRunning] = useState<boolean>(false);
+
   // Custom hooks
   const { showToast } = useToastContext();
-  const { getRandomPrompt, createWorkflow, submitTask, submitVaceControlVideoTask, submitInfiniteTalkTask, submitT2VTask, submitI2VTask, monitorTask } = useTaskManagerContext();
+  const { getRandomPrompt, createWorkflow, submitTask, submitVaceControlVideoTask, submitInfiniteTalkTask, submitT2ITask, submitT2VTask, submitI2VTask, submitFaceSwapTask, monitorTask } = useTaskManagerContext();
 
   // Run single test
   const runSingleTest = useCallback(async () => {
@@ -118,6 +125,36 @@ const TestControls: React.FC<TestControlsProps> = ({
       setIsBatchTestRunning(false);
     }
   }, [isConnected, batchSize, useRandomPrompts, customPrompt, getRandomPrompt, createWorkflow, submitTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
+
+    // Run single text-to-image test
+  const runSingleT2ITest = useCallback(async () => {
+    if (!isConnected) {
+      showToast('Please connect to scheduler first', 'warning');
+      return;
+    }
+    
+    const prompt = customPrompt.trim() || getRandomPrompt();
+    if (!prompt) {
+      showToast('Please provide a prompt for text-to-image generation', 'warning');
+      return;
+    }
+    
+    setIsT2ITestRunning(true);
+    
+    try {
+      const task = await submitT2ITask(prompt);
+      
+      showToast(`Text-to-image task submitted: ${task.id}`, 'success');
+      monitorTask(task.id, `T2I: ${prompt}`, schedulerUrl);
+      // Reload tasks to maintain sort order
+      await loadExistingTasks(sortOptions);
+    } catch (error: any) {
+      showToast(`Failed to submit text-to-image task: ${error.message}`, 'error');
+    } finally {
+      setIsT2ITestRunning(false);
+    }
+  }, [isConnected, customPrompt, getRandomPrompt, submitT2ITask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
+
 
   // Handle image file upload
   const handleImageFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -294,6 +331,24 @@ const TestControls: React.FC<TestControlsProps> = ({
     }
   }, []);
 
+  // Handle faceswap image file upload
+  const handleFaceswapImageFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setFaceswapImageFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFaceswapImagePreviewUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFaceswapImageFile(null);
+      setFaceswapImagePreviewUrl(null);
+    }
+  }, []);
+
   // Run single image-to-video test
   const runSingleI2VTest = useCallback(async () => {
     if (!isConnected) {
@@ -321,6 +376,39 @@ const TestControls: React.FC<TestControlsProps> = ({
       setIsI2VTestRunning(false);
     }
   }, [isConnected, i2vImageFile, submitI2VTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
+
+  // Run faceswap test
+  const runFaceSwapTest = useCallback(async () => {
+    if (!isConnected) {
+      showToast('Please connect to scheduler first', 'warning');
+      return;
+    }
+    
+    if (!faceswapImageFile) {
+      showToast('Please provide an image file', 'warning');
+      return;
+    }
+    
+    if (!faceswapVideoFileKey.trim()) {
+      showToast('Please provide a video file key', 'warning');
+      return;
+    }
+    
+    setIsFaceSwapTestRunning(true);
+    
+    try {
+      const task = await submitFaceSwapTask(faceswapImageFile, faceswapVideoFileKey);
+      
+      showToast(`Faceswap task submitted: ${task.id}`, 'success');
+      monitorTask(task.id, `FaceSwap: ${faceswapImageFile.name} + ${faceswapVideoFileKey}`, schedulerUrl);
+      // Reload tasks to maintain sort order
+      await loadExistingTasks(sortOptions);
+    } catch (error: any) {
+      showToast(`Failed to submit faceswap task: ${error.message}`, 'error');
+    } finally {
+      setIsFaceSwapTestRunning(false);
+    }
+  }, [isConnected, faceswapImageFile, faceswapVideoFileKey, submitFaceSwapTask, monitorTask, showToast, loadExistingTasks, sortOptions, schedulerUrl]);
   return (
     <>
       {/* Mode Tabs */}
@@ -363,6 +451,13 @@ const TestControls: React.FC<TestControlsProps> = ({
               disabled={isSingleTestRunning}
             >
               {isSingleTestRunning ? 'Running...' : 'Run Single Test'}
+            </button>
+
+            <button 
+              onClick={runSingleT2ITest}
+              disabled={isT2ITestRunning}
+            >
+              {isT2ITestRunning ? 'Generating...' : 'Generate with Qwen Image'}
             </button>
           </div>
 
@@ -566,6 +661,71 @@ const TestControls: React.FC<TestControlsProps> = ({
               disabled={isVaceControlVideoTestRunning || !videoImageFile || !videoFile}
             >
               {isVaceControlVideoTestRunning ? 'Running...' : 'Run Single Video Test'}
+            </button>
+          </div>
+
+          {/* FaceSwap Test */}
+          <div className="section">
+            <h3>FaceSwap Generation</h3>
+            <div className="file-upload-section">
+              <div className="upload-area">
+                <label htmlFor="faceswap-image-upload" className="upload-label">
+                  <div className="upload-content">
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="upload-text">
+                      {faceswapImageFile ? 'Change Image' : 'Upload Image File'}
+                    </span>
+                    <span className="upload-hint">Click to browse or drag and drop</span>
+                  </div>
+                </label>
+                <input 
+                  id="faceswap-image-upload"
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleFaceswapImageFileChange}
+                  className="upload-input"
+                />
+              </div>
+              
+              {faceswapImageFile && (
+                <div className="file-preview-section">
+                  <div className="file-info">
+                    <div className="file-details">
+                      <span className="file-name">{faceswapImageFile.name}</span>
+                      <span className="file-size">({(faceswapImageFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                  </div>
+                  
+                  {faceswapImagePreviewUrl && (
+                    <div className="image-preview">
+                      <img 
+                        src={faceswapImagePreviewUrl} 
+                        alt="Preview" 
+                        className="preview-image"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="input-section">
+              <input 
+                type="text" 
+                placeholder="Enter video file key (e.g., path/to/video.mp4)"
+                value={faceswapVideoFileKey}
+                onChange={(e) => setFaceswapVideoFileKey(e.target.value)}
+                className="video-key-input"
+              />
+            </div>
+            
+            <button 
+              onClick={runFaceSwapTest}
+              disabled={isFaceSwapTestRunning || !faceswapImageFile || !faceswapVideoFileKey.trim()}
+            >
+              {isFaceSwapTestRunning ? 'Processing...' : 'Generate FaceSwap Video'}
             </button>
           </div>
 
